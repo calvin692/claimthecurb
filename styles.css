@@ -1,0 +1,21 @@
+:root { --pine:#146348; --cream:#f3f0e8; --ink:#1c1f1a; --muted:#5b645b; --orange:#c45c2a; --line:#d7ddd4; --paper:#fffdf8; }
+* { box-sizing:border-box } body { margin:0; font-family:Georgia,serif; background:var(--cream); color:var(--ink); line-height:1.5 }
+a { color:var(--pine) } .wrap { width:min(1080px, calc(100% - 2rem)); margin:0 auto }
+nav { display:flex; justify-content:space-between; align-items:center; padding:.9rem 0 }
+.logo { font-family:system-ui,sans-serif; font-weight:800; text-decoration:none; color:var(--ink); font-size:1.15rem }
+.logo span { color:var(--orange) }
+nav ul { list-style:none; display:flex; gap:1.1rem; margin:0; padding:0; font-family:system-ui,sans-serif; font-weight:600 }
+nav a { text-decoration:none; color:var(--ink) }
+.btn { display:inline-block; background:var(--orange); color:#fff; text-decoration:none; font-family:system-ui,sans-serif; font-weight:800; border-radius:999px; padding:.7rem 1.15rem }
+.btn.dark { background:var(--pine) }
+.hero { background:var(--pine); color:var(--cream); padding:3.2rem 0 3.6rem; border-bottom:8px solid var(--orange) }
+.hero .kicker { font-family:system-ui,sans-serif; letter-spacing:.16em; text-transform:uppercase; font-size:.75rem; color:#ffd4a8 }
+.hero h1 { font-size:clamp(2.2rem,6vw,4.1rem); line-height:.95; max-width:14ch }
+.section { padding:3rem 0 } .muted { color:var(--muted) }
+.grid { display:grid; gap:1rem; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); margin-top:1.4rem }
+.card { background:var(--paper); border:1px solid var(--line); border-radius:16px; padding:1.15rem 1.2rem }
+.num { font-family:system-ui,sans-serif; font-weight:800; color:var(--orange) }
+.legend { background:#f8e6d8; border-left:6px solid var(--orange); padding:1rem 1.1rem; border-radius:8px; margin:1.2rem 0 }
+footer { background:var(--ink); color:#d7ddd4; padding:2rem 0; font-family:system-ui,sans-serif }
+footer a { color:#ffd4a8 } .foot-row { display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap }
+@media (max-width:760px){ nav ul { display:none } }
