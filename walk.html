@@ -1,70 +1,65 @@
 <!DOCTYPE html>
 <html lang="en-CA">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Walk — Curb Claim</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="preconnect" href="https://unpkg.com"/>
+<link rel="preconnect" href="https://tile.openstreetmap.org"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
-html,body{height:100%;margin:0;font-family:system-ui,sans-serif;background:#f3f0e8}
-#map{position:fixed;inset:7.2rem 0 4.6rem 0}
-.map-bar{position:fixed;top:0;left:0;right:0;z-index:500;background:#fff;border-bottom:1px solid #d5ddd5;padding:.7rem .9rem}
-.map-bar h1{margin:0;font-size:1.15rem}
-.towns{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.45rem}
-.towns button{border:1px solid #d5ddd5;background:#fff;border-radius:999px;padding:.28rem .7rem;font:inherit;font-weight:700}
+*{box-sizing:border-box}html,body{height:100%;margin:0;font-family:system-ui,sans-serif;background:#f3f0e8}
+#map{position:fixed;inset:6.4rem 0 4.2rem}
+.bar{position:fixed;top:0;left:0;right:0;z-index:500;background:#fff;padding:.55rem .8rem;border-bottom:1px solid #ddd}
+.bar h1{margin:0;font-size:1.05rem}
+.towns{display:flex;gap:.35rem;margin-top:.4rem;flex-wrap:wrap}
+.towns button{border:1px solid #ccc;background:#fff;border-radius:999px;padding:.25rem .65rem;font:inherit;font-weight:700}
 .towns button.on{background:#146348;color:#fff;border-color:#146348}
-.map-dock{position:fixed;left:0;right:0;bottom:0;z-index:500;background:#fff;border-top:1px solid #d5ddd5;padding:.65rem .9rem;display:flex;gap:.5rem;align-items:center}
-.map-dock .msg{flex:1;font-size:.9rem;color:#5b645b}
-.key{position:fixed;right:.7rem;bottom:5.4rem;z-index:500;background:#fff;border-radius:10px;padding:.45rem .6rem;font-size:.78rem;box-shadow:0 2px 10px rgba(0,0,0,.12)}
-.sw{display:inline-block;width:.7rem;height:.7rem;border-radius:2px;margin-right:.3rem}
-.sw.open{background:#8fb9a6}.sw.take{background:#c45c2a}.sw.pick{background:#1a7a58}
-.primary{background:#1a7a58;color:#fff;border:0;border-radius:12px;padding:.7rem .85rem;font:inherit;font-weight:800}
-.primary:disabled{opacity:.45}
-.text-btn{background:none;border:0;color:#146348;font:inherit;font-weight:700}
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:500;background:#fff;display:flex;gap:.45rem;align-items:center;padding:.55rem .8rem;border-top:1px solid #ddd}
+.dock p{flex:1;margin:0;font-size:.85rem;color:#555}
+.primary{background:#1a7a58;color:#fff;border:0;border-radius:10px;padding:.6rem .75rem;font:inherit;font-weight:800}
+.primary:disabled{opacity:.4}
+.text{background:0;border:0;color:#146348;font:inherit;font-weight:700}
 </style>
 </head>
 <body>
-<div class="map-bar"><h1>Walk · Curb Claim</h1><div class="towns" id="towns"></div></div>
+<div class="bar"><h1>Walk · Curb Claim</h1><div class="towns" id="towns"></div></div>
 <div id="map"></div>
-<div class="key"><div><span class="sw open"></span>Open</div><div><span class="sw pick"></span>Selected</div><div><span class="sw take"></span>Picked up — skip</div></div>
-<div class="map-dock"><p class="msg" id="msg">Tap streets or Draw box, then I picked these up.</p>
-<button type="button" class="text-btn" id="drawBtn">Draw box</button>
-<button type="button" class="primary" id="collectBtn" disabled>I picked these up</button></div>
+<div class="dock"><p id="msg">Tap a street, then I picked these up.</p>
+<button class="text" id="drawBtn" type="button">Draw box</button>
+<button class="primary" id="collectBtn" type="button" disabled>I picked these up</button></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const OSM=L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"});
-const ESRI=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",{maxZoom:19,attribution:"Esri"});
-const TOWNS=[
-{id:"stalbert",name:"St. Albert",center:[53.6306,-113.6254],zoom:15,streets:[
-{name:"Boudreau Road",line:[[53.6332,-113.632],[53.6330,-113.618]]},
-{name:"McKenney Avenue",line:[[53.6288,-113.632],[53.6286,-113.618]]},
-{name:"Sir Winston Churchill Ave",line:[[53.6355,-113.626],[53.6260,-113.625]]},
-{name:"Poirier Avenue",line:[[53.6312,-113.632],[53.6310,-113.618]]}]},
-{id:"edmonton",name:"Edmonton",center:[53.6308,-113.401],zoom:15,streets:[
-{name:"Hollick-Kenyon Road",line:[[53.633,-113.408],[53.633,-113.394]]},
-{name:"50 Street",line:[[53.636,-113.401],[53.626,-113.401]]},
-{name:"153 Avenue",line:[[53.6365,-113.408],[53.6365,-113.394]]},
-{name:"144 Avenue",line:[[53.6275,-113.408],[53.6275,-113.394]]}]},
-{id:"calgary",name:"Calgary",center:[51.0915,-114.148],zoom:15,streets:[
-{name:"Varsity Drive",line:[[51.0935,-114.156],[51.0935,-114.140]]},
-{name:"40 Avenue NW",line:[[51.0892,-114.156],[51.0892,-114.140]]},
-{name:"19 Street NW",line:[[51.096,-114.148],[51.086,-114.148]]}]}];
-const KEY="curb-claim.walk.collected.v1";
-function loadDone(){try{return JSON.parse(localStorage.getItem(KEY)||"{}")}catch{return {}}}
-function saveDone(d){localStorage.setItem(KEY,JSON.stringify(d))}
-const done=loadDone();const selected=new Set();let town=TOWNS[0],layers=[],drawing=false,boxStart=null,boxRect=null;
-const map=L.map("map",{preferCanvas:true});OSM.addTo(map);OSM.on("tileerror",()=>{if(!map.hasLayer(ESRI))ESRI.addTo(map)});
-function sid(s){return town.id+":"+s.name}
-function styleFor(s){const k=sid(s);if(done[k])return{color:"#c45c2a",weight:10,opacity:.85};if(selected.has(k))return{color:"#1a7a58",weight:10,opacity:.9};return{color:"#8fb9a6",weight:8,opacity:.7}}
-function paint(){layers.forEach(l=>map.removeLayer(l));layers=[];town.streets.forEach(street=>{const line=L.polyline(street.line,styleFor(street));line.addTo(map);line.on("click",e=>{L.DomEvent.stop(e);if(drawing)return;const k=sid(street);if(done[k])return;if(selected.has(k))selected.delete(k);else selected.add(k);paint()});layers.push(line)});status()}
-function status(){const n=selected.size;document.getElementById("collectBtn").disabled=n===0;const msg=document.getElementById("msg");if(drawing)msg.textContent="Drag a box over the streets you walked.";else if(n)msg.textContent=n+" street"+(n===1?"":"s")+" selected.";else msg.textContent="Tap streets or Draw box, then I picked these up."}
-function goTown(t){town=t;selected.clear();map.setView(t.center,t.zoom);paint();[...document.querySelectorAll(".towns button")].forEach(b=>b.classList.toggle("on",b.dataset.id===t.id))}
-TOWNS.forEach(t=>{const b=document.createElement("button");b.type="button";b.dataset.id=t.id;b.textContent=t.name;b.onclick=()=>goTown(t);document.getElementById("towns").appendChild(b)});
-document.getElementById("collectBtn").onclick=()=>{selected.forEach(k=>done[k]=Date.now());saveDone(done);selected.clear();paint()};
-document.getElementById("drawBtn").onclick=()=>{drawing=!drawing;document.getElementById("drawBtn").textContent=drawing?"Cancel box":"Draw box";map.dragging[drawing?"disable":"enable"]();status()};
-map.on("mousedown",e=>{if(!drawing)return;boxStart=e.latlng;if(boxRect)map.removeLayer(boxRect);boxRect=L.rectangle([boxStart,boxStart],{color:"#146348",weight:2,dashArray:"4 3",fillOpacity:.08}).addTo(map)});
-map.on("mousemove",e=>{if(!drawing||!boxStart||!boxRect)return;boxRect.setBounds(L.latLngBounds(boxStart,e.latlng))});
-map.on("mouseup",e=>{if(!drawing||!boxStart)return;const bounds=L.latLngBounds(boxStart,e.latlng);town.streets.forEach(street=>{const k=sid(street);if(done[k])return;if(street.line.some(p=>bounds.contains(p)))selected.add(k)});boxStart=null;if(boxRect){map.removeLayer(boxRect);boxRect=null}drawing=false;document.getElementById("drawBtn").textContent="Draw box";map.dragging.enable();paint()});
-goTown(TOWNS[0]);
+const T=[
+{id:"stalbert",n:"St. Albert",c:[53.6306,-113.6254],z:15,s:[
+["Boudreau Road",[[53.6332,-113.632],[53.633,-113.618]]],
+["McKenney Avenue",[[53.6288,-113.632],[53.6286,-113.618]]],
+["Churchill Ave",[[53.6355,-113.626],[53.626,-113.625]]]]},
+{id:"edmonton",n:"Edmonton",c:[53.6308,-113.401],z:15,s:[
+["Hollick-Kenyon Road",[[53.633,-113.408],[53.633,-113.394]]],
+["50 Street",[[53.636,-113.401],[53.626,-113.401]]],
+["153 Avenue",[[53.6365,-113.408],[53.6365,-113.394]]]]},
+{id:"calgary",n:"Calgary",c:[51.0915,-114.148],z:15,s:[
+["Varsity Drive",[[51.0935,-114.156],[51.0935,-114.14]]],
+["40 Avenue NW",[[51.0892,-114.156],[51.0892,-114.14]]]]}
+];
+const K="cc.w.v2";
+let done={};try{done=JSON.parse(localStorage.getItem(K)||"{}")}catch(e){}
+const sel=new Set();let town=T[0],ly=[],draw=0,a=null,box=null;
+const map=L.map("map",{preferCanvas:1,zoomControl:1});
+L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"OSM"}).addTo(map);
+function sid(n){return town.id+":"+n}
+function st(n){const k=sid(n);return done[k]?{color:"#c45c2a",weight:10}:sel.has(k)?{color:"#1a7a58",weight:10}:{color:"#8fb9a6",weight:8}}
+function paint(){ly.forEach(x=>map.removeLayer(x));ly=[];town.s.forEach(([n,line])=>{const p=L.polyline(line,st(n)).addTo(map);p.on("click",e=>{L.DomEvent.stop(e);if(draw)return;const k=sid(n);if(done[k])return;sel.has(k)?sel.delete(k):sel.add(k);paint()});ly.push(p)});msg()}
+function msg(){const n=sel.size;document.getElementById("collectBtn").disabled=!n;document.getElementById("msg").textContent=draw?"Drag a box.":(n?n+" selected.":"Tap a street, then I picked these up.")}
+function go(t){town=t;sel.clear();map.setView(t.c,t.z);paint();[...document.querySelectorAll(".towns button")].forEach(b=>b.classList.toggle("on",b.dataset.id===t.id))}
+T.forEach(t=>{const b=document.createElement("button");b.dataset.id=t.id;b.textContent=t.n;b.onclick=()=>go(t);document.getElementById("towns").appendChild(b)});
+document.getElementById("collectBtn").onclick=()=>{sel.forEach(k=>done[k]=1);localStorage.setItem(K,JSON.stringify(done));sel.clear();paint()};
+document.getElementById("drawBtn").onclick=()=>{draw=!draw;document.getElementById("drawBtn").textContent=draw?"Cancel":"Draw box";map.dragging[draw?"disable":"enable"]();msg()};
+map.on("mousedown",e=>{if(!draw)return;a=e.latlng;if(box)map.removeLayer(box);box=L.rectangle([a,a],{color:"#146348",weight:2,dashArray:"4"}).addTo(map)});
+map.on("mousemove",e=>{if(draw&&a&&box)box.setBounds(L.latLngBounds(a,e.latlng))});
+map.on("mouseup",e=>{if(!draw||!a)return;const B=L.latLngBounds(a,e.latlng);town.s.forEach(([n,line])=>{if(!done[sid(n)]&&line.some(p=>B.contains(p)))sel.add(sid(n))});a=null;if(box){map.removeLayer(box);box=null}draw=0;document.getElementById("drawBtn").textContent="Draw box";map.dragging.enable();paint()});
+go(T[0]);
 </script>
-</body></html>
+</body>
+</html>
