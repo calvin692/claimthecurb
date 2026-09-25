@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en-CA">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Crew map — Claim the Curb</title>
+  <meta name="description" content="A street picture for a bottle-drive crew. No login." />
+  <meta name="theme-color" content="#146348" />
+  <style>
+    :root { color-scheme: light; }
+    body { margin: 0; background: #f3f0e8; color: #1c1f1a; font-family: ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 40rem; margin: 0 auto; padding: 1rem 1rem 2rem; }
+    .kicker { letter-spacing: 0.16em; text-transform: uppercase; font-size: 0.72rem; font-weight: 700; color: #5c655c; }
+    h1 { font-size: 1.6rem; margin: 0.3rem 0; }
+    p { line-height: 1.45; }
+    a { color: #146348; }
+    img { width: 100%; border: 1px solid #d9d3c5; border-radius: 8px; background: #fff; }
+    nav { display: grid; gap: 0.4rem; margin-top: 0.8rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="kicker">Claim the Curb</p>
+    <h1 id="place">Your streets</h1>
+    <p id="note">No login. This page draws the street picture.</p>
+    <p id="status">Opening the picture…</p>
+    <img id="shot" alt="" hidden />
+    <nav>
+      <a id="jpg" href="#">JPEG picture</a>
+      <a id="tiff" href="#">TIFF picture</a>
+      <a href="https://www.claimthecurb.ca/">claimthecurb.ca</a>
+      <a href="https://www.claimthecurb.com/">claimthecurb.com</a>
+    </nav>
+  </main>
+  <script>
+    var shot = document.getElementById("shot");
+    var statusEl = document.getElementById("status");
+    var canvas = document.createElement("canvas");
+
+    function decode(hash) {
+      var raw = String(hash || "").replace(/^#/, "").replace(/-/g, "+").replace(/_/g, "/");
+      if (!raw) return null;
+      var pad = raw + "===".slice((raw.length + 3) % 4);
+      var bin = atob(pad);
+      var bytes = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      return JSON.parse(new TextDecoder().decode(bytes));
+    }
+
+    function project(streets) {
+      var minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+      streets.forEach(function (street) {
+        (street.l || []).forEach(function (p) {
+          minLat = Math.min(minLat, p[0]); maxLat = Math.max(maxLat, p[0]);
+          minLng = Math.min(minLng, p[1]); maxLng = Math.max(maxLng, p[1]);
+        });
+      });
+      if (!isFinite(minLat)) { minLat = 0; maxLat = 1; minLng = 0; maxLng = 1; }
+      var padLat = Math.max((maxLat - minLat) * 0.12, 0.001);
+      var padLng = Math.max((maxLng - minLng) * 0.12, 0.001);
+      minLat -= padLat; maxLat += padLat; minLng -= padLng; maxLng += padLng;
+      var left = 70, top = 150, width = 960, height = 980;
+      return function (lat, lng) {
+        var x = left + ((lng - minLng) / (maxLng - minLng)) * width;
+        var y = top + ((maxLat - lat) / (maxLat - minLat)) * height;
+        return [x, y];
+      };
+    }
+
+    function draw(data) {
+      canvas.width = 1100;
+      canvas.height = 1500;
+      var ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#f3f0e8";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#146348";
+      ctx.font = "700 22px sans-serif";
+      ctx.fillText("CLAIM THE CURB", 70, 64);
+      ctx.fillStyle = "#1c1f1a";
+      ctx.font = "700 48px sans-serif";
+      ctx.fillText(String(data.p || "Your streets").slice(0, 32), 70, 116);
+      var to = project(data.s || []);
+      (data.s || []).forEach(function (street, index) {
+        var line = street.l || [];
+        if (line.length < 2) return;
+        ctx.beginPath();
+        line.forEach(function (p, i) {
+          var xy = to(p[0], p[1]);
+          if (i === 0) ctx.moveTo(xy[0], xy[1]);
+          else ctx.lineTo(xy[0], xy[1]);
+        });
+        ctx.strokeStyle = "#1c1f1a";
+        ctx.lineWidth = 22;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.stroke();
+        ctx.strokeStyle = "#ffe14a";
+        ctx.lineWidth = 14;
+        ctx.stroke();
+        var mid = line[Math.floor(line.length / 2)];
+        var xy = to(mid[0], mid[1]);
+        ctx.fillStyle = "#146348";
+        ctx.beginPath();
+        ctx.arc(xy[0], xy[1], 16, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#fff";
+        ctx.font = "700 16px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(String(index + 1), xy[0], xy[1] + 6);
+        ctx.textAlign = "left";
+      });
+      var y = 1180;
+      ctx.fillStyle = "#1c1f1a";
+      ctx.font = "600 28px sans-serif";
+      (data.s || []).forEach(function (street, index) {
+        ctx.fillText(index + 1 + ".  " + String(street.n || "Street"), 70, y);
+        y += 36;
+      });
+      ctx.fillStyle = "#5c655c";
+      ctx.font = "500 22px sans-serif";
+      ctx.fillText("claimthecurb.ca  ·  claimthecurb.com", 70, 1460);
+      if (data.c) ctx.fillText(String(data.c), 70, 1424);
+    }
+
+    function tiffBlob() {
+      var w = canvas.width, h = canvas.height;
+      var pixels = canvas.getContext("2d").getImageData(0, 0, w, h).data;
+      var rgb = new Uint8Array(w * h * 3);
+      for (var i = 0, j = 0; i < pixels.length; i += 4, j += 3) {
+        rgb[j] = pixels[i]; rgb[j + 1] = pixels[i + 1]; rgb[j + 2] = pixels[i + 2];
+      }
+      var tags = 10, ifd = 2 + tags * 12 + 4, header = 8, bitsAt = header + ifd, stripAt = bitsAt + 8;
+      var bytes = new Uint8Array(stripAt + rgb.length);
+      var view = new DataView(bytes.buffer);
+      view.setUint8(0, 0x49); view.setUint8(1, 0x49); view.setUint16(2, 42, true); view.setUint32(4, header, true);
+      view.setUint16(header, tags, true);
+      var cursor = header + 2;
+      function tag(id, type, count, value) {
+        view.setUint16(cursor, id, true); view.setUint16(cursor + 2, type, true);
+        view.setUint32(cursor + 4, count, true); view.setUint32(cursor + 8, value, true); cursor += 12;
+      }
+      tag(256, 4, 1, w); tag(257, 4, 1, h); tag(258, 3, 3, bitsAt); tag(259, 3, 1, 1);
+      tag(262, 3, 1, 2); tag(273, 4, 1, stripAt); tag(277, 3, 1, 3); tag(278, 4, 1, h);
+      tag(279, 4, 1, rgb.length); tag(284, 3, 1, 1);
+      view.setUint16(bitsAt, 8, true); view.setUint16(bitsAt + 2, 8, true); view.setUint16(bitsAt + 4, 8, true);
+      bytes.set(rgb, stripAt);
+      return new Blob([bytes], { type: "image/tiff" });
+    }
+
+    function save(blob, name) {
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+    }
+
+    var params = new URLSearchParams(location.search);
+    var as = params.get("as");
+    var data = null;
+    try { data = decode(location.hash); } catch (err) { data = null; }
+    document.getElementById("jpg").href = location.pathname + "?as=jpg" + location.hash;
+    document.getElementById("tiff").href = location.pathname + "?as=tiff" + location.hash;
+
+    if (!data || !data.s || !data.s.length) {
+      statusEl.textContent = "This link has no streets. Ask the coach to send the picture again.";
+    } else {
+      document.getElementById("place").textContent = data.p || "Your streets";
+      document.title = (data.p || "Crew map") + " — Claim the Curb";
+      draw(data);
+      canvas.toBlob(function (blob) {
+        if (!blob) return;
+        shot.src = URL.createObjectURL(blob);
+        shot.alt = "Map of " + (data.p || "streets");
+        shot.hidden = false;
+        statusEl.textContent = as === "jpg"
+          ? "The JPEG picture should start saving. It is also on this page."
+          : as === "tiff"
+            ? "The TIFF picture should start saving. The picture stays on this page."
+            : "Send this page to your crew. It opens on claimthecurb.ca or claimthecurb.com.";
+        if (as === "jpg") save(blob, "curb-claim-streets.jpg");
+        if (as === "tiff") save(tiffBlob(), "curb-claim-streets.tiff");
+      }, "image/jpeg", 0.92);
+    }
+  </script>
+</body>
+</html>
