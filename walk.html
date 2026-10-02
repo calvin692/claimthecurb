@@ -47,8 +47,7 @@ const K="cc.w.v2";
 let done={};try{done=JSON.parse(localStorage.getItem(K)||"{}")}catch(e){}
 const sel=new Set();let town=T[0],ly=[],draw=0,a=null,box=null;
 const map=L.map("map",{preferCanvas:1,zoomControl:1});
-L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",{maxZoom:16,attribution:"Esri"}).addTo(map);
-L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}",{maxZoom:16}).addTo(map);
+L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",{maxZoom:19,attribution:"Esri"}).addTo(map);
 function sid(n){return town.id+":"+n}
 function st(n){const k=sid(n);return done[k]?{color:"#c45c2a",weight:10}:sel.has(k)?{color:"#1a7a58",weight:10}:{color:"#8fb9a6",weight:8}}
 function paint(){ly.forEach(x=>map.removeLayer(x));ly=[];town.s.forEach(([n,line])=>{const p=L.polyline(line,st(n)).addTo(map);p.on("click",e=>{L.DomEvent.stop(e);if(draw)return;const k=sid(n);if(done[k])return;sel.has(k)?sel.delete(k):sel.add(k);paint()});ly.push(p)});msg()}
